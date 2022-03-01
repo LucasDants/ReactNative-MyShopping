@@ -7,8 +7,13 @@ import { Photo } from '../../components/Photo';
 
 import { Container, Content, Progress, Transferred } from './styles';
 
+import storage from '@react-native-firebase/storage'
+import { Alert } from 'react-native';
+
 export function Upload() {
   const [image, setImage] = useState('');
+  const [bytesTransferred, setBytesTransferred] = useState('')
+  const [progress, setProgress] = useState('0')
 
   async function handlePickImage() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -26,24 +31,45 @@ export function Upload() {
     }
   };
 
+  async function handleUpload() {
+    const fileName = new Date().getTime()
+    const reference = storage().ref(`/images/${fileName}.png`)
+
+    const uploadTask = reference.putFile(image)
+
+    uploadTask.on('state_changed', taskSnapshot => {
+      const percent = ((taskSnapshot.bytesTransferred / taskSnapshot.totalBytes) * 100).toFixed(0)
+
+      setProgress(percent)
+
+      setBytesTransferred(`${taskSnapshot.bytesTransferred} transferido de ${taskSnapshot.totalBytes}`)
+    })
+
+    uploadTask.then(async () => {
+      const imageUrl = await reference.getDownloadURL()
+      // salvar no banco de dados, pois demora um pouco o getDonwloadUrl
+      Alert.alert('Upload concluído')
+    })
+  }
+
   return (
     <Container>
-      <Header title="Lista de compras" />
+      <Header title="Upload de Fotos" />
 
       <Content>
         <Photo uri={image} onPress={handlePickImage} />
 
         <Button
           title="Fazer upload"
-          onPress={() => { }}
+          onPress={handleUpload}
         />
 
         <Progress>
-          0%
+          {progress}%
         </Progress>
 
         <Transferred>
-          0 de 100 bytes transferido
+          {bytesTransferred}
         </Transferred>
       </Content>
     </Container>
